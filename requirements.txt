@@ -1,2 +1,5 @@
 discord.py
 dotenv
+pytz
+requests
+beautifulsoup4
