@@ -143,11 +143,11 @@ async def on_message(message):
 
 @tasks.loop(seconds=30)
 async def loop():
-    now = datetime.now(timezone('Asia/Tokyo')).strftime('%H:%M')
+    now = datetime.datetime.now(timezone('Asia/Tokyo')).strftime('%H:%M')
     if now == '06:30' or  now == '21:00':
         channel = client.get_channel(HUKUYAKU_ID)
         await channel.send('服薬の時間だ同志')
-    elif now == '13:47':
+    elif now == '6:00':
         channel = client.get_channel(OHAYOU_ID)
         await channel.send('おはよう')
 
