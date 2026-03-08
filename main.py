@@ -233,23 +233,19 @@ async def voice_monitoring_task():
     channel = client.get_channel(int(VOICE_ID))
     # チャンネルが存在し、かつメンバーがいる場合
     if channel and channel.members:
-        start_time = time.time()
-        
-        while(True):
-            elapsed_time = time.time() - start_time  # 経過時間を計算
-            channel = client.get_channel(int(NOTIFY_ID))
-            await channel.send(f"現在 {len(channel.members)} 人が参加中です。処理を実行します。")
-            
-        print(f"現在 {len(channel.members)} 人が参加中です。処理を実行します。")
+        # 通知先のチャンネルを取得（変数名を分けて上書きを防ぐ）
+        notify_channel = client.get_channel(int(NOTIFY_ID))
+        if notify_channel:
+            await notify_channel.send(f"現在 {len(channel.members)} 人が参加中です。処理を実行します。")
         # 例: データベースの更新、経験値の付与など
 
 @tasks.loop(seconds=30)
 async def loop():
     now = datetime.datetime.now(timezone('Asia/Tokyo')).strftime('%H:%M')
-    if now == '06:30' or  now == '21:00':
+    if now == '06:30' or now == '21:00':
         channel = client.get_channel(int(HUKUYAKU_ID))
         await channel.send('服薬の時間だ同志')
-    elif now == '6:00':
+    elif now == '06:00':
         channel = client.get_channel(int(OHAYOU_ID))
         await channel.send('おはよう')
     
