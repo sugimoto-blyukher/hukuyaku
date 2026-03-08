@@ -18,10 +18,10 @@ HUKUYAKU_ID = os.getenv('HUKUYAKU_ID')
 OHAYOU_ID = os.getenv('OHAYOU_ID')
 KAKAKU_SSD = 'https://kakaku.com/pc/ssd/itemlist.aspx'
 TARGET_URL = 'https://suumo.jp/jj/chintai/ichiran/FR301FC001/?ar=010&bs=040&ta=01&sc=01202&oz=01202109&sngz=&po1=12'
+VOICE_ID = os.getenv('VOICE_ID')
 intents = discord.Intents.default()
 intents.message_content = True
 SSD_ID = os.getenv('SSD_ID')
-
 
 #スクレイピング関数
 def load_page(url):
@@ -212,6 +212,7 @@ async def scrape(ctx):
 @client.event
 async def on_ready():
     loop.start()
+    voice_monitoring_task.start()
 
 @client.event
 async def on_message(message):
@@ -221,6 +222,19 @@ async def on_message(message):
         await message.channel.send('えらい')
     
     await client.process_commands(message)
+
+@tasks.loop(seconds=60)
+async def voice_monitoring_task():
+    """ボイスチャンネルにメンバーがいる間、定期的に実行されるタスク"""
+    if not VOICE_ID:
+        return
+
+    channel = client.get_channel(int(VOICE_ID))
+    # チャンネルが存在し、かつメンバーがいる場合
+    if channel and channel.members:
+        # === ここに実行したい処理を書く ===
+        print(f"現在 {len(channel.members)} 人が参加中です。処理を実行します。")
+        # 例: データベースの更新、経験値の付与など
 
 @tasks.loop(seconds=30)
 async def loop():
