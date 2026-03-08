@@ -232,9 +232,9 @@ async def loop():
         channel = client.get_channel(int(OHAYOU_ID))
         await channel.send('おはよう')
     
-    if now == '12:00' or now == '21:00':
-        channel = client.get_channel(int(SSD_ID))
-        if channel:
-            await report_ssd_prices(channel)
-
+    #if now == '12:00' or now == '21:00':
+    #    channel = client.get_channel(int(SSD_ID))
+    #    if channel:
+    #        await report_ssd_prices(channel)
+            
 client.run(TOKEN)
