@@ -16,9 +16,12 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 HUKUYAKU_ID = os.getenv('HUKUYAKU_ID')
 OHAYOU_ID = os.getenv('OHAYOU_ID')
+KAKAKU_SSD = 'https://kakaku.com/pc/ssd/itemlist.aspx'
 TARGET_URL = 'https://suumo.jp/jj/chintai/ichiran/FR301FC001/?ar=010&bs=040&ta=01&sc=01202&oz=01202109&sngz=&po1=12'
 intents = discord.Intents.default()
 intents.message_content = True
+SSD_ID = os.getenv('SSD_ID')
+
 
 #スクレイピング関数
 def load_page(url):
@@ -31,10 +34,61 @@ def load_page(url):
     except Exception as e:
         print(f"エラーが発生しました: {e}")
         return None
+
+def run_memory_scraping():
+    # 価格昇順でソート (?pdf_so=p1)
+    ssd_url = KAKAKU_SSD + '?pdf_so=p1&pn={}'
     
+    targets = {
+        '500GB': [],
+        '512GB': [],
+        '1000GB': [] # 1TB含む
+    }
+    
+    # 3つのカテゴリが全て20件集まるか、ページ上限までループ
+    for page in range(1, 11):
+        if all(len(v) >= 20 for v in targets.values()):
+            break
+    
+        #ページ情報
+        current_page_url = ssd_url.format(page)
+        soup = load_page(current_page_url)
+        if soup is None:
+            continue
+            
+        rows = soup.find_all('tr', class_='tr-border')
+        for row in rows:
+            try:
+                name_tag = row.find(class_='ckitemLink')
+                if not name_tag: continue
+                name = name_tag.text.strip()
+                
+                price_tag = row.find(class_='yen')
+                if not price_tag: continue
+                price = price_tag.text.strip()
+                
+                link = name_tag.get('href')
+                if link and not link.startswith('http'):
+                    link = 'https://kakaku.com' + link
+
+                item_info = f"{name} - {price}: {link}"
+                
+                # 容量判定 (商品名や行内のテキストで判定)
+                row_text = row.text
+                if ('1000GB' in name or '1TB' in name) and len(targets['1000GB']) < 20:
+                    targets['1000GB'].append(item_info)
+                elif '512GB' in name and len(targets['512GB']) < 20:
+                    targets['512GB'].append(item_info)
+                elif '500GB' in name and len(targets['500GB']) < 20:
+                    targets['500GB'].append(item_info)
+            except Exception:
+                continue
+                
+    return targets
+        
+
 def run_scraping():
-    global data_samples
-    data_samples = []
+    local_data_samples = []
     url = TARGET_URL + '&pn={}'
 
     for page in range(1, max_page + 1):
@@ -94,8 +148,9 @@ def run_scraping():
                         data_room.append(abs_url)
                 # 物件情報と部屋情報をくっつける
                 data_sample = data_home + data_room
-                data_samples.append(data_sample)
+                local_data_samples.append(data_sample)
         time.sleep(1)
+    return local_data_samples
 
 def get_rent_value(row):
     # 家賃はリストの後ろから7番目の要素（data_roomのindex 1）
@@ -113,12 +168,12 @@ client = commands.Bot(command_prefix='!', intents=intents)
 async def scrape(ctx):
     await ctx.send('スクレイピングを開始します...')
     # ブロッキング処理をExecutorで実行
-    await client.loop.run_in_executor(None, run_scraping)
-    await ctx.send(f'スクレイピングが完了しました。取得件数: {len(data_samples)}')
+    results = await client.loop.run_in_executor(None, run_scraping)
+    await ctx.send(f'スクレイピングが完了しました。取得件数: {len(results)}')
     
-    if data_samples:
+    if results:
         # 家賃で昇順ソートして上位10件を取得
-        sorted_data = sorted(data_samples, key=get_rent_value)
+        sorted_data = sorted(results, key=get_rent_value)
         top_10 = sorted_data[:10]
         
         message = "【最安物件トップ10】\n"
@@ -145,10 +200,34 @@ async def on_message(message):
 async def loop():
     now = datetime.datetime.now(timezone('Asia/Tokyo')).strftime('%H:%M')
     if now == '06:30' or  now == '21:00':
-        channel = client.get_channel(HUKUYAKU_ID)
+        channel = client.get_channel(int(HUKUYAKU_ID))
         await channel.send('服薬の時間だ同志')
     elif now == '6:00':
-        channel = client.get_channel(OHAYOU_ID)
+        channel = client.get_channel(int(OHAYOU_ID))
         await channel.send('おはよう')
+    
+    if now == '12:00' or now == '21:00':
+        channel = client.get_channel(int(SSD_ID))
+        await channel.send('SSDの価格調査を開始します...')
+        
+        results = await client.loop.run_in_executor(None, run_memory_scraping)
+        
+        for cap, items in results.items():
+            if not items:
+                continue
+            message = f"【{cap} 最安トップ20】\n"
+            # Discordの文字数制限(2000文字)を考慮して分割送信が必要な場合の簡易対応
+            # ここでは20件程度ならURLの長さ次第だが、分割して送る
+            chunk = ""
+            for item in items:
+                line = item + "\n"
+                if len(chunk) + len(line) > 1900:
+                    await channel.send(message + chunk)
+                    message = "" # ヘッダーは最初だけ、または継続を示す
+                    chunk = line
+                else:
+                    chunk += line
+            if chunk:
+                await channel.send(message + chunk)
 
 client.run(TOKEN)
