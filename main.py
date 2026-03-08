@@ -224,7 +224,9 @@ async def on_message(message):
     
     await client.process_commands(message)
 
-@tasks.loop(seconds=60)
+
+
+@tasks.loop(minutes=25)
 async def voice_monitoring_task():
     """ボイスチャンネルにメンバーがいる間、定期的に実行されるタスク"""
     if not VOICE_ID:
@@ -236,8 +238,22 @@ async def voice_monitoring_task():
         # 通知先のチャンネルを取得（変数名を分けて上書きを防ぐ）
         notify_channel = client.get_channel(int(NOTIFY_ID))
         if notify_channel:
-            await notify_channel.send(f"現在 {len(channel.members)} 人が参加中です。処理を実行します。")
+            await notify_channel.send("25分経過しました！作業の区切りをつけて休憩しましょう🍵")
         # 例: データベースの更新、経験値の付与など
+
+@tasks.loop(minutes=30)
+async def voice_monitoring_call():
+    """ボイスチャンネルにメンバーがいる間、定期的に実行されるタスク"""
+    if not VOICE_ID:
+        return
+
+    channel = client.get_channel(int(VOICE_ID))
+    # チャンネルが存在し、かつメンバーがいる場合
+    if channel and channel.members:
+        # 通知先のチャンネルを取得（変数名を分けて上書きを防ぐ）
+        notify_channel = client.get_channel(int(NOTIFY_ID))
+        if notify_channel:
+            await notify_channel.send("休憩から５分経過しました！作業の再開をしましょう🍵")
 
 @tasks.loop(seconds=30)
 async def loop():
