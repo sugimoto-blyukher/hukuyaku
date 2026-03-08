@@ -164,6 +164,32 @@ def get_rent_value(row):
 
 client = commands.Bot(command_prefix='!', intents=intents)
 
+async def report_ssd_prices(channel):
+    await channel.send('SSDの価格調査を開始します...')
+    
+    results = await client.loop.run_in_executor(None, run_memory_scraping)
+    
+    for cap, items in results.items():
+        if not items:
+            continue
+        message = f"【{cap} 最安トップ20】\n"
+        chunk = ""
+        for item in items:
+            line = item + "\n"
+            if len(chunk) + len(line) > 1900:
+                await channel.send(message + chunk)
+                message = "" 
+                chunk = line
+            else:
+                chunk += line
+        if chunk:
+            await channel.send(message + chunk)
+
+@client.command()
+async def scrape_memory(ctx):
+    # コマンドを実行したチャンネルに結果を送信します
+    await report_ssd_prices(ctx.channel)
+
 @client.command()
 async def scrape(ctx):
     await ctx.send('スクレイピングを開始します...')
@@ -208,26 +234,7 @@ async def loop():
     
     if now == '12:00' or now == '21:00':
         channel = client.get_channel(int(SSD_ID))
-        await channel.send('SSDの価格調査を開始します...')
-        
-        results = await client.loop.run_in_executor(None, run_memory_scraping)
-        
-        for cap, items in results.items():
-            if not items:
-                continue
-            message = f"【{cap} 最安トップ20】\n"
-            # Discordの文字数制限(2000文字)を考慮して分割送信が必要な場合の簡易対応
-            # ここでは20件程度ならURLの長さ次第だが、分割して送る
-            chunk = ""
-            for item in items:
-                line = item + "\n"
-                if len(chunk) + len(line) > 1900:
-                    await channel.send(message + chunk)
-                    message = "" # ヘッダーは最初だけ、または継続を示す
-                    chunk = line
-                else:
-                    chunk += line
-            if chunk:
-                await channel.send(message + chunk)
+        if channel:
+            await report_ssd_prices(channel)
 
 client.run(TOKEN)
