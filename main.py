@@ -12,10 +12,7 @@ import time
 data_samples = []
 max_page = 100
 
-base_dir = os.path.dirname(os.path.abspath(__file__))
-dotenv_path = os.path.join(base_dir, '.env')
-
-load_dotenv(dotenv_path)
+load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 HUKUYAKU_ID = os.getenv('HUKUYAKU_ID')
 OHAYOU_ID = os.getenv('OHAYOU_ID')
